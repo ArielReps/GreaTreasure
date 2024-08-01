@@ -2,6 +2,7 @@ using GreaTreasure.DAL;
 using GreaTreasure.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Diagnostics;
 using System.Xml;
 
@@ -14,6 +15,7 @@ namespace GreaTreasure.Controllers
         public HomeController(ILogger<HomeController> logger)
         {
             _logger = logger;
+
         }
 
         public IActionResult Index()
@@ -38,7 +40,7 @@ namespace GreaTreasure.Controllers
         {
             if (!IsNull(id))
             {
-                Library? library = Data.Get.Libraries.FirstOrDefault(x => x.Id == id);
+                Library? library = Data.Get.Libraries.Include(x =>x.Shelves).ThenInclude(x=>x.Books).FirstOrDefault(x => x.Id == id);
                 if (library != null)
                 {
                     TempData["libID"] = library.Id;
@@ -57,17 +59,79 @@ namespace GreaTreasure.Controllers
         [HttpPost]
         public IActionResult CreateShelf(Shelf shelf, int libID)
         {
-            if (shelf != null)
+            var library = Data.Get.Libraries.Include(s => s.Shelves).FirstOrDefault(x => x.Id == libID);
+            if (library != null)
             {
-                Library? templib = Data.Get.Libraries.Include(s => s.Shelves).FirstOrDefault(x => x.Id == libID);
-                if (templib != null)
+                shelf.Library = library; // Set the library instance
+               library.Shelves.Add(new Shelf(shelf.Name, shelf.Height,shelf.Library));
+
+
+                try
                 {
-                    shelf.library = templib;
-                    templib.Shelves.Add(shelf);
                     Data.Get.SaveChanges();
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error saving shelf: {0}", ex.Message);
+                    ViewBag.ErrorMessage = "An error occurred while saving the shelf. Please try again.";
+                 
+                }      
             }
-            return RedirectToAction("Shelves");
+            return RedirectToAction("Shelves", new { id = libID });
+        }
+        public IActionResult Books(int? id)
+        {
+            if (!IsNull(id))
+            {
+                Shelf? shelf = Data.Get.Shelves.Include(x => x.Books).FirstOrDefault(x => x.Id == id);
+                if (shelf != null)
+                {
+                    TempData["shelfID"] = shelf.Id;
+                    return View(shelf.Books);
+                }
+            }
+            return RedirectToAction("Index");
+        }
+        public IActionResult CreateBook(int? id)
+        {
+            ViewBag.shelfID = id;
+            return View(new Book());
+        }
+        [HttpPost]
+        public IActionResult CreateBook(Book book, int shelfID)
+        {
+            var shelf = Data.Get.Shelves.Include(s => s.Books).FirstOrDefault(x => x.Id == shelfID);
+            if (shelf != null)
+            {
+                if (shelf.Height - 10 >= book.Height)
+                {
+                    TempData["AlertMessage"] = "שים לב, הספר שהוכנס נמוך ב 10 סנטימטרים ויותר מהמדף";
+                }
+                if(shelf.Height < book.Height || shelf.Width- shelf.OccupiedWidth < book.Width)
+                {
+                    TempData["AlertMessage"] = "הספר פיזית לא יכול להכנס";
+                    return RedirectToAction("Books", new { id = shelfID });
+                } 
+                    
+
+                book.shelf = shelf;
+                shelf.Books.Add(new Book(book.Title, book.Description, book.shelf, book.Width, book.Height));
+
+                try
+                {
+                    Data.Get.SaveChanges();
+
+                   
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error saving book: {0}", ex.Message);
+                    ViewBag.ErrorMessage = "An error occurred while saving the book. Please try again.";
+                    return View(book);
+                }
+            }
+
+            return RedirectToAction("Books", new { id = shelfID });
         }
 
         public bool IsNull(int? num)

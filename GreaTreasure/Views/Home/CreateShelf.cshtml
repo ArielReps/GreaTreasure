@@ -4,9 +4,8 @@
     ViewData["Title"] = "CreateShelf";
 }
 
-<h1>CreateShelf</h1>
+<h1>יצירת מדף</h1>
 
-<h4>Shelf</h4>
 <hr />
 <div class="row">
     <div class="col-md-4">
@@ -21,6 +20,7 @@
                 <input asp-for="Height" class="form-control" />
                 <span asp-validation-for="Height" class="text-danger"></span>
             </div>
+
             <input type="hidden" name="libID" value="@ViewBag.libID" />
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />

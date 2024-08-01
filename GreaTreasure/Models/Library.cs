@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Security.Permissions;
 
 namespace GreaTreasure.Models
 {
@@ -13,6 +15,8 @@ namespace GreaTreasure.Models
         [Display(Name = "רוחב")]
         public int Width { get; set; }
         public List<Shelf> Shelves { get; set; }
+        [NotMapped]
+        public Shelf addShelf { get { return null; } set { if (value == null) return; Shelves.Add(value); } }
         public Library(string name, string genre, int width)
         {
             Name = name;
